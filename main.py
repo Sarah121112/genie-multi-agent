@@ -1,5 +1,6 @@
 """Main entry point for the CaseStudyAgent application."""
 import sys
+import uuid
 from agents.coordinator import build_coordinator
 
 
@@ -11,6 +12,10 @@ def main():
     except ValueError as e:
         print(f"Configuration error: {e}")
         sys.exit(1)
+    
+    # Generate a thread ID for checkpointing
+    thread_id = str(uuid.uuid4())
+    config = {"configurable": {"thread_id": thread_id}}
     
     print("Agent ready! Ask questions about sales or customers.")
     print("Type 'exit' or 'quit' to stop.\n")
@@ -24,8 +29,8 @@ def main():
                 print("Goodbye!")
                 break
 
-            # Invoke the agent
-            result = agent.invoke({"messages": [{"role": "user", "content": q}]})
+            # Invoke the agent with required config
+            result = agent.invoke({"messages": [{"role": "user", "content": q}]}, config=config)
             
             # Extract the last assistant message
             if "messages" in result and result["messages"]:
@@ -43,8 +48,13 @@ def main():
             print("\n\nInterrupted. Goodbye!")
             break
         except Exception as e:
-            print(f"\nError: {e}\n")
+            # Print full traceback to aid debugging connection errors
+            import traceback
+            print("\nError encountered (full traceback below):\n")
+            traceback.print_exc()
 
 
 if __name__ == "__main__":
+    main()
+
     main()

@@ -14,20 +14,23 @@ def get_sales_tools():
     
     @tool
     def sales_genie(question: str) -> str:
-        """Query sales and revenue data from Databricks.
+        """Query sales and revenue data from Databricks for specific metrics.
         
         Use this tool for questions about:
-        - Sales figures, revenue, and transactions
-        - Product performance and categories
-        - Regional sales breakdown
-        - Sales trends and comparisons
-        - Top/bottom performing products
+        - Specific revenue figures by region, product, or category
+        - Top/bottom N performing products with exact revenue numbers
+        - Sales trends with period-over-period comparisons
+        - Revenue breakdown by dimension (region, category, product)
+        - Growth rates and percentage changes
+        
+        Always provide exact numbers and comparisons in your question.
+        Include timeframe (e.g., "January 2026", "last quarter") and metric details.
         
         Args:
-            question: A natural language question about sales data
+            question: A specific, detailed question about sales data
             
         Returns:
-            Answer from the sales data warehouse
+            Specific sales metrics and data from the warehouse
         """
         return ask_genie(space_id, question)
 

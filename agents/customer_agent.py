@@ -14,20 +14,23 @@ def get_customer_tools():
     
     @tool
     def customer_genie(question: str) -> str:
-        """Query customer data from Databricks.
+        """Query customer data from Databricks for specific insights.
         
         Use this tool for questions about:
-        - Customer segments and demographics
-        - Churn risk and retention analysis
-        - Customer lifetime value (LTV/CLV)
-        - Customer geographic distribution
-        - Customer behavior patterns
+        - Customer segmentation with exact counts and percentages
+        - Churn risk breakdown by segment with specific percentages
+        - Customer lifetime value (LTV) by segment with exact values
+        - Geographic distribution with specific numbers per region
+        - Behavior patterns with quantified metrics
+        
+        Always provide exact numbers, percentages, and segment comparisons in your question.
+        Specify which segments or regions to analyze and desired metrics.
         
         Args:
-            question: A natural language question about customer data
+            question: A specific, detailed question about customer data
             
         Returns:
-            Answer from the customer data warehouse
+            Specific customer metrics and data from the warehouse
         """
         return ask_genie(space_id, question)
 
