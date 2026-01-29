@@ -1,7 +1,9 @@
 """Coordinator agent using LangChain + LangGraph with Azure OpenAI."""
+import sqlite3
 from pydantic import SecretStr
 from langchain_openai import AzureChatOpenAI
 from langgraph.prebuilt import create_react_agent  # type: ignore
+from langgraph.checkpoint.sqlite import SqliteSaver
 
 from config import (
     AZURE_OPENAI_API_KEY,
@@ -47,8 +49,8 @@ RESPONSE RULES:
 """
 
 
-def build_coordinator():
-    """Build a multi-agent coordinator as a ReAct agent."""
+def build_coordinator(db_path: str = "checkpoints.sqlite"):
+    """Build a multi-agent coordinator as a ReAct agent with SQLite memory."""
     validate_config()
 
     api_key = SecretStr(AZURE_OPENAI_API_KEY) if AZURE_OPENAI_API_KEY else None
@@ -63,8 +65,14 @@ def build_coordinator():
 
     tools = get_sales_tools() + get_customer_tools()
 
+    # Setup SQLite checkpointer for conversation memory
+    conn = sqlite3.connect(db_path, check_same_thread=False)
+    checkpointer = SqliteSaver(conn)
+    checkpointer.setup()  # Creates tables if needed
+
     return create_react_agent(
         llm,
         tools,
         prompt=SYSTEM_PROMPT,
+        checkpointer=checkpointer,
     )
