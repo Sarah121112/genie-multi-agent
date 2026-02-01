@@ -41,3 +41,8 @@ env/
 # OS
 .DS_Store
 Thumbs.db
+
+# LangGraph / SQLite checkpoints (memory)
+checkpoints.sqlite
+checkpoints.sqlite-shm
+checkpoints.sqlite-wal

@@ -1,79 +1,102 @@
-from databricks.sdk import WorkspaceClient
-from config import DATABRICKS_HOST, DATABRICKS_TOKEN
+import os
+import random
 import time
-import logging
+import datetime as dt
+from typing import Any, Optional
 
-# Cache the WorkspaceClient as a singleton for better performance
-_client: WorkspaceClient | None = None
-
-
-def get_client() -> WorkspaceClient:
-    """Get or create a cached WorkspaceClient instance.
-    
-    Returns:
-        Configured WorkspaceClient for Databricks API calls
-        
-    Raises:
-        ValueError: If Databricks credentials are not configured
-    """
-    global _client
-    if _client is None:
-        if not DATABRICKS_HOST or not DATABRICKS_TOKEN:
-            raise ValueError("Databricks credentials not configured in .env file")
-        _client = WorkspaceClient(host=DATABRICKS_HOST, token=DATABRICKS_TOKEN)
-    return _client
+from databricks.sdk import WorkspaceClient
+from databricks.sdk.errors.platform import PermissionDenied, Unauthenticated, NotFound, BadRequest
 
 
-def ask_genie(space_id: str, question: str) -> str:
-    """Query the Databricks Genie API with a question.
-    
-    Args:
-        space_id: The Genie space ID to query
-        question: The question to ask
-        
-    Returns:
-        The response from Genie, or "No response" if no answer found
-        
-    Raises:
-        ValueError: If Databricks credentials are not configured
-        RuntimeError: If the Genie API call fails
-    """
-    # Implement a small retry loop for transient connection errors
-    max_retries = 3
-    backoff = 1.0
-    last_exc = None
+TRANSIENT_HINTS = (
+    "rate limit",
+    "429",
+    "timeout",
+    "timed out",
+    "temporarily",
+    "service unavailable",
+    "connection reset",
+    "connection aborted",
+    "connection error",
+    "502",
+    "503",
+    "504",
+    "try again",
+)
 
-    for attempt in range(1, max_retries + 1):
+NON_RETRYABLE_HINTS = (
+    "can view",
+    "permission",
+    "forbidden",
+    "unauthorized",
+    "401",
+    "403",
+    "invalid token",
+    "not authorized",
+    "access denied",
+)
+
+
+def _is_transient_exception(e: Exception) -> bool:
+    msg = str(e).lower()
+    if any(h in msg for h in NON_RETRYABLE_HINTS):
+        return False
+    return any(h in msg for h in TRANSIENT_HINTS)
+
+
+def _extract_text(message: Any) -> str:
+    attachments = getattr(message, "attachments", None)
+    if attachments:
+        parts: list[str] = []
+        for att in attachments:
+            text = getattr(att, "text", None) or getattr(att, "content", None)
+            if text:
+                parts.append(str(text))
+        if parts:
+            return "\n\n".join(parts)
+
+    for field in ("text", "answer", "content", "final_summary"):
+        v = getattr(message, field, None)
+        if v:
+            return str(v)
+
+    return str(message)
+
+
+def ask_genie(space_id: str, question: str, retries: int = 3, timeout_seconds: int = 120) -> str:
+    if not space_id:
+        raise ValueError("space_id is required")
+    if not question or not question.strip():
+        raise ValueError("question must be a non-empty string")
+
+    if not os.getenv("DATABRICKS_HOST") or not os.getenv("DATABRICKS_TOKEN"):
+        raise ValueError('Missing Databricks auth. Set DATABRICKS_HOST and DATABRICKS_TOKEN.')
+
+    client = WorkspaceClient()
+
+    last_err: Optional[Exception] = None
+    for attempt in range(1, retries + 1):
         try:
-            client = get_client()
-            message = client.genie.start_conversation_and_wait(
+            msg = client.genie.start_conversation_and_wait(
                 space_id=space_id,
                 content=question,
+                timeout=dt.timedelta(seconds=timeout_seconds),
             )
+            return _extract_text(msg)
 
-            if message.attachments:
-                for a in message.attachments:
-                    if a.text and a.text.content:
-                        return a.text.content
-
-            return "No response from Genie. Try rephrasing your question."
-        except ValueError:
-            # Re-raise credential errors as-is
+        except (PermissionDenied, Unauthenticated, NotFound, BadRequest):
             raise
+
         except Exception as e:
-            last_exc = e
-            logging.warning(
-                "ask_genie attempt %d/%d failed: %s",
-                attempt,
-                max_retries,
-                str(e),
-            )
-            # If last attempt, break and raise below
-            if attempt == max_retries:
-                break
-            time.sleep(backoff)
-            backoff *= 2
+            last_err = e
+            if not _is_transient_exception(e):
+                raise
 
-    # After retries, raise a clear runtime error with original exception chained
-    raise RuntimeError("Genie API connection error after retries") from last_exc
+            if attempt < retries:
+                delay = min(8.0, 1.0 * (2 ** (attempt - 1)))
+                delay += random.uniform(0, 0.25 * delay)
+                time.sleep(delay)
+            else:
+                raise
 
+    raise last_err if last_err else RuntimeError("Unknown ask_genie failure")

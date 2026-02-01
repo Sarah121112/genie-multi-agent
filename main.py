@@ -1,60 +1,49 @@
-"""Main entry point for the CaseStudyAgent application."""
-import sys
 import uuid
 from agents.coordinator import build_coordinator
+from utils.retry import retry_call
 
 
 def main():
-    """Main interactive agent loop."""
-    print("Initializing agent...")
-    try:
-        agent = build_coordinator()
-    except ValueError as e:
-        print(f"Configuration error: {e}")
-        sys.exit(1)
-    
-    # Generate a thread ID for checkpointing
+    print("Starting coordinator agent...")
+
+    agent = build_coordinator()
+
     thread_id = str(uuid.uuid4())
     config = {"configurable": {"thread_id": thread_id}}
-    
-    print("Agent ready! Ask questions about sales or customers.")
-    print("Type 'exit' or 'quit' to stop.\n")
+
+    print("Agent ready!")
+    print("Ask questions about sales, customers, or inventory.")
+    print("Type 'exit' to quit.\n")
 
     while True:
-        try:
-            q = input("Question: ").strip()
-            if not q:
-                continue
-            if q.lower() in ("exit", "quit"):
-                print("Goodbye!")
-                break
+        question = input("Questions: ").strip()
 
-            # Invoke the agent with required config
-            result = agent.invoke({"messages": [{"role": "user", "content": q}]}, config=config)
-            
-            # Extract the last assistant message
-            if "messages" in result and result["messages"]:
-                # Find the last assistant message with content
-                for msg in reversed(result["messages"]):
-                    if hasattr(msg, "content") and msg.content:
-                        print(f"\n{msg.content}\n")
-                        break
-                    elif isinstance(msg, dict) and msg.get("role") == "assistant" and msg.get("content"):
-                        print(f"\n{msg['content']}\n")
-                        break
-            else:
-                print("\nNo response received\n")
-        except KeyboardInterrupt:
-            print("\n\nInterrupted. Goodbye!")
+        if not question:
+            continue
+
+        if question.lower() in ("exit", "quit"):
+            print("Bye 👋")
             break
-        except Exception as e:
-            # Print full traceback to aid debugging connection errors
-            import traceback
-            print("\nError encountered (full traceback below):\n")
-            traceback.print_exc()
+
+        ok, result, err, attempts = retry_call(
+            lambda: agent.invoke({"messages": [("user", question)]}, config=config),
+            retries=2,
+            base_delay=1.0,
+            max_delay=6.0,
+        )
+
+        if not ok:
+            print("\nAgent: Sorry — I couldn’t complete that request.\n")
+            print(f"Agent: Attempts: {attempts}")
+            print(f"Agent: Error: {err}\n")
+            continue
+
+        messages = result.get("messages", [])
+        if messages:
+            print(f"\nAgent: {messages[-1].content}\n")
+        else:
+            print("\nAgent: (no response)\n")
 
 
 if __name__ == "__main__":
-    main()
-
     main()

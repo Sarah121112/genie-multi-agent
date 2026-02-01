@@ -1,8 +1,8 @@
-"""Coordinator agent using LangChain + LangGraph with Azure OpenAI."""
 import sqlite3
 from pydantic import SecretStr
+from langchain_core.tools import tool
 from langchain_openai import AzureChatOpenAI
-from langgraph.prebuilt import create_react_agent  # type: ignore
+from langgraph.prebuilt import create_react_agent
 from langgraph.checkpoint.sqlite import SqliteSaver
 
 from config import (
@@ -12,45 +12,31 @@ from config import (
     AZURE_API_VERSION,
     validate_config,
 )
-from agents.sales_agent import get_sales_tools
-from agents.customer_agent import get_customer_tools
+
+from agents.sales_agent import build_sales_agent
+from agents.customer_agent import build_customer_agent
+from agents.inventory_agent import build_inventory_agent
 
 
-SYSTEM_PROMPT = """You answer questions using ONLY the available data and the two tools.
-Your goal is to provide DATA-DRIVEN answers with exact numbers and actionable insights.
+SYSTEM_PROMPT = """You are the Coordinator Agent responsible for answering business questions.
 
-Available data:
-- sales_transactions columns: date, product, category, revenue, region
-- customer_behavior columns: customer_id, segment, lifetime_value, churn_risk, region
+You can query:
+- Sales data (revenue, growth, product performance)
+- Customer data (segmentation, churn, lifetime value)
+- Inventory data (stock, reorder risk)
 
-Tools:
-- sales_genie: Query for sales, revenue, products, categories, regions, and trends
-- customer_genie: Query for customer segments, churn_risk, lifetime_value, and regions
+You have access to three specialist agents:
+- sales_agent: use for sales metrics and revenue questions
+- customer_agent: use for customer segmentation/churn/LTV questions
+- inventory_agent: use for stock levels and reorder risk questions
 
-DEFAULT VALUES (use when user doesn't specify):
-- Timeframe: "full available period"
-- Sales metric: "total revenue"
-- Customer metric: "customer segments and churn risk breakdown"
-- Segments: all available regions and segments
-- Dimensions: breakdown by region, by segment, by category
-   
-RESPONSE RULES:
-1. ALWAYS provide an answer using defaults above for any unspecified aspect.
-   
-2. STRUCTURE your response with:
-   - Direct answer with specific numbers (e.g., "$2.4M revenue", "42% churn rate")
-   - Breakdown by relevant dimensions (by region, by segment, by category)
-   - Key insights and patterns
-   - Actionable recommendations based on the data
-
-3. For combined questions (sales + customer), call BOTH tools and integrate results.
-
-4. Never mention fields that do not exist: orders, AOV, channels, loyalty tiers, subscriptions, conversions, demographics beyond region.
+Use tools whenever exact data or metrics are required.
+If a question combines domains, call multiple agents and synthesize.
+If a question is outside these domains, say so clearly.
 """
 
 
 def build_coordinator(db_path: str = "checkpoints.sqlite"):
-    """Build a multi-agent coordinator as a ReAct agent with SQLite memory."""
     validate_config()
 
     api_key = SecretStr(AZURE_OPENAI_API_KEY) if AZURE_OPENAI_API_KEY else None
@@ -60,15 +46,39 @@ def build_coordinator(db_path: str = "checkpoints.sqlite"):
         azure_deployment=AZURE_OPENAI_DEPLOYMENT,
         api_version=AZURE_API_VERSION,
         api_key=api_key,
-        max_retries=3,  # Add retry support for transient errors
+        max_retries=3,
     )
 
-    tools = get_sales_tools() + get_customer_tools()
+    sales_agent_graph = build_sales_agent()
+    customer_agent_graph = build_customer_agent()
+    inventory_agent_graph = build_inventory_agent()
 
-    # Setup SQLite checkpointer for conversation memory
+    @tool
+    def sales_agent(question: str) -> str:
+        """Ask the Sales Agent to answer a sales analytics question."""
+        result = sales_agent_graph.invoke({"messages": [("user", question)]})
+        messages = result.get("messages", [])
+        return messages[-1].content if messages else "(no response)"
+
+    @tool
+    def customer_agent(question: str) -> str:
+        """Ask the Customer Agent to answer a customer analytics question."""
+        result = customer_agent_graph.invoke({"messages": [("user", question)]})
+        messages = result.get("messages", [])
+        return messages[-1].content if messages else "(no response)"
+
+    @tool
+    def inventory_agent(question: str) -> str:
+        """Ask the Inventory Agent to answer an inventory analytics question."""
+        result = inventory_agent_graph.invoke({"messages": [("user", question)]})
+        messages = result.get("messages", [])
+        return messages[-1].content if messages else "(no response)"
+
+    tools = [sales_agent, customer_agent, inventory_agent]
+
     conn = sqlite3.connect(db_path, check_same_thread=False)
     checkpointer = SqliteSaver(conn)
-    checkpointer.setup()  # Creates tables if needed
+    checkpointer.setup()
 
     return create_react_agent(
         llm,
