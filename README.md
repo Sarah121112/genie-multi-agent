@@ -126,8 +126,8 @@ python main.py
 Questions: What is the total revenue?
 Agent: Total revenue is $3,275 (North: $2,525, South: $750)
 
-Questions: Which products are top sellers?
-Agent: Top products: Laptop ($2,400), Chair ($750), Mouse ($125)
+Questions: Which product is the top seller?
+Agent: Top product: Laptop ($2,400)
 ```
 
 **Customer Questions:**
