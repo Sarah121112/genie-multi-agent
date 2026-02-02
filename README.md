@@ -124,34 +124,34 @@ python main.py
 **Sales Questions:**
 ```
 Questions: What is the total revenue?
-Agent: Total revenue is $45,250 (North: $35,100, South: $10,150)
+Agent: Total revenue is $3,275 (North: $2,525, South: $750)
 
 Questions: Which products are top sellers?
-Agent: Top products: Laptop ($34,200), Monitor ($8,900), Mouse ($2,150)
+Agent: Top products: Laptop ($2,400), Chair ($750), Mouse ($125)
 ```
 
 **Customer Questions:**
 ```
 Questions: What are customer segments?
-Agent: Premium (45 customers, 12% churn), Standard (35 customers, 28% churn), Basic (20 customers, 42% churn)
+Agent: Premium (2 customers, Low churn), Standard (1 customer, High churn)
 
 Questions: Which regions have high churn?
-Agent: South (35% churn) is highest, followed by West (22%), North (18%)
+Agent: South has High churn (C002 customer), North has Low churn (C001, C003 customers)
 ```
 
 **Inventory Questions:**
 ```
 Questions: What needs reordering?
-Agent: Laptop (5 units, reorder at 10) and Monitor (3 units, reorder at 8)
+Agent: Chair needs reordering (6 units, reorder level 10)
 ```
 
 **Multi-Agent Analysis:**
 ```
 Questions: What regions have high revenue but high churn?
-Agent: South has low revenue ($10,150) but high churn (35%). North has high revenue ($35,100) with low churn (18%).
+Agent: North has high revenue ($2,525) with Low churn. South has lower revenue ($750) but High churn.
 
 Questions: Which product categories appeal to Premium customers?
-Agent: Premium customers prefer Electronics (82%) over Furniture (18%).
+Agent: Premium customers in North prefer Electronics (Laptop $2,400 + Mouse $125 = $2,525) over Furniture ($750).
 ```
 
 Type `exit` or `quit` to stop.
