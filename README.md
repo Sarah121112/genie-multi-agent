@@ -2,17 +2,6 @@
 
 A production-grade multi-agent system using **LangChain** and **Azure OpenAI** to orchestrate queries across **three Databricks Genie workspaces** (Sales Analytics, Customer Insights, Inventory Management). The coordinator synthesizes cross-domain insights through intelligent agent routing and conversation memory.
 
-##  Case Study Overview
-
-**Objective:** Build a multi-agent system that queries multiple Databricks Genie workspaces and coordinates insights across them.
-
-**Time Estimate:** 2.5 hours | **Difficulty:** Intermediate
-
-**Key Challenge:** Enable agents to query separate data domains (Sales, Customer, Inventory) and coordinate responses to complex business questions like:
-- "What regions have high revenue but high customer churn?"
-- "Compare sales performance with customer segments"
-- "Which product categories appeal to Premium customers?"
-
 ## Features
 
 - **3 Specialized Agents:**
