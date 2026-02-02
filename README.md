@@ -130,205 +130,42 @@ AZURE_API_VERSION=2025-01-01-preview
 python main.py
 ```
 
-### Example Queries (Aligned to Case Study)
+### Example Queries
 
-#### **Single-Agent Queries**
-
-**Sales Analytics:**
+**Sales Questions:**
 ```
 Questions: What is the total revenue?
-Agent: Total revenue (full available period): $45,250
-        - By region: North $35,100 (77.5%), South $10,150 (22.5%)
-        - By category: Electronics $32,400 (71.6%), Furniture $12,850 (28.4%)
-        Key Insight: North region dominates revenue
+Agent: Total revenue is $45,250 (North: $35,100, South: $10,150)
 
-Questions: What are the top selling products?
-Agent: Top 3 Products by Revenue:
-        1. Laptop - $34,200
-        2. Monitor - $8,900
-        3. Mouse - $2,150
+Questions: Which products are top sellers?
+Agent: Top products: Laptop ($34,200), Monitor ($8,900), Mouse ($2,150)
 ```
 
-**Customer Analytics:**
+**Customer Questions:**
 ```
-Questions: Show customer segments and their churn risk
-Agent: Customer Segments:
-        - Premium: 45 customers, 12% churn risk, Avg LTV: $15,000
-        - Standard: 35 customers, 28% churn risk, Avg LTV: $5,200
-        - Basic: 20 customers, 42% churn risk, Avg LTV: $1,800
-        Action: Focus retention on Standard/Basic segments
+Questions: What are customer segments?
+Agent: Premium (45 customers, 12% churn), Standard (35 customers, 28% churn), Basic (20 customers, 42% churn)
 
-Questions: Which regions have the highest customer churn?
-Agent: Churn by Region:
-        - South: 35% churn (high risk!)
-        - North: 18% churn (stable)
-        - West: 22% churn (moderate)
+Questions: Which regions have high churn?
+Agent: South (35% churn) is highest, followed by West (22%), North (18%)
 ```
 
-**Inventory Management:**
+**Inventory Questions:**
 ```
-Questions: What inventory items need reordering?
-Agent: Reorder Alert:
-        - Laptop: 5 units (threshold: 10) - ORDER NOW
-        - Monitor: 3 units (threshold: 8) - ORDER NOW
-        - Mouse: 45 units (threshold: 20) - Stock OK
+Questions: What needs reordering?
+Agent: Laptop (5 units, reorder at 10) and Monitor (3 units, reorder at 8)
 ```
 
-#### **Multi-Agent Queries (Coordinator Synthesis)**
+**Multi-Agent Analysis:**
+```
+Questions: What regions have high revenue but high churn?
+Agent: South has low revenue ($10,150) but high churn (35%). North has high revenue ($35,100) with low churn (18%).
 
-**Cross-Domain Analysis:**
-```
-Questions: What regions have high revenue but high customer churn?
-Agent: Cross-Domain Analysis:
-        
-        Sales Data:
-        - North: $35,100 revenue (77% of total) ✓ HIGH
-        - South: $10,150 revenue (23% of total) ✗ LOW
-        
-        Customer Data:
-        - North: 18% churn (stable)
-        - South: 35% churn (HIGH RISK!)
-        
-        KEY FINDING: South region is underperforming on revenue AND has highest churn
-        RECOMMENDATION: Investigate South region pain points; consider targeted retention campaign
-```
-
-```
-Questions: Compare sales performance with customer segments
-Agent: Sales × Customer Insights:
-        
-        Premium Segment (High LTV):
-        - Prefers: Laptops, Monitors (high-value products)
-        - Churn: 12% (low risk)
-        - Avg Order Value: $2,100
-        - Region: Concentrated in North
-        
-        Standard Segment (Mid LTV):
-        - Prefers: Monitors, Peripherals
-        - Churn: 28% (moderate)
-        - Avg Order Value: $650
-        
-        ACTION: Up-sell premium products to Standard segment; protect North region
-```
-
-```
 Questions: Which product categories appeal to Premium customers?
-Agent: Premium Customer Preference Analysis:
-        
-        Premium Segment Purchases:
-        - Electronics: 82% (Laptops, Monitors)
-        - Furniture: 18% (Premium desks)
-        
-        Sales Trend:
-        - Avg Electronics purchase: $1,850
-        - Avg Furniture purchase: $950
-        
-        INSIGHT: Premium customers drive Electronics revenue
-        STRATEGY: Bundle premium furniture with electronics; create loyalty program
-```
-
-**Inventory × Sales × Customer:**
-```
-Questions: What's the inventory risk for high-demand, high-churn products?
-Agent: Inventory Risk Assessment:
-        
-        High-Demand Products (Sales):
-        - Laptop (top product, $34.2K revenue)
-        - Monitor (2nd product, $8.9K revenue)
-        
-        Inventory Status:
-        - Laptop: 5 units (CRITICAL - below threshold of 10)
-        - Monitor: 3 units (CRITICAL - below threshold of 8)
-        
-        Customer Impact (Churn Analysis):
-        - South region (35% churn): 40% of purchases are Laptops
-        - Stockout = Customer dissatisfaction = Higher churn
-        
-        URGENT: Reorder Laptops and Monitors immediately to prevent South region churn spike
+Agent: Premium customers prefer Electronics (82%) over Furniture (18%).
 ```
 
 Type `exit` or `quit` to stop.
-
----
-
-## Task Completion Summary
-
-### Task 1: Databricks Setup ✓ (30 min)
-
-- [x] Created three Genie Spaces:
-  - Sales Analytics (sales_transactions table)
-  - Customer Insights (customer_behavior table)
-  - Inventory Management (inventory_items table)
-- [x] Loaded sample data (CSV/SQL)
-- [x] Tested Genie spaces manually
-- [x] Documented Space IDs in `.env`
-
-**Sample Data Schema:**
-```sql
--- Sales Genie: sales_transactions
-SELECT date, product, category, revenue, region FROM sales_transactions
--- Example: 2024-01-15, Laptop, Electronics, 2400, North
-
--- Customer Genie: customer_behavior
-SELECT customer_id, segment, lifetime_value, churn_risk, region FROM customer_behavior
--- Example: C001, Premium, 15000, Low, North
-
--- Inventory Genie: inventory_items
-SELECT product_id, product_name, current_stock, reorder_level, reorder_qty FROM inventory_items
--- Example: PROD001, Laptop, 5, 10, 50
-```
-
-### Task 2: Build Multi-Agent System ✓ (90 min)
-
-- [x] 3 Specialized Agents implemented:
-  - Sales Agent (LangChain ReAct + Genie)
-  - Customer Agent (LangChain ReAct + Genie)
-  - Inventory Agent (LangChain ReAct + Genie)
-  
-- [x] Coordinator Agent (LangChain ReAct):
-  - Routes questions to appropriate agents
-  - Synthesizes multi-agent responses
-  - Maintains conversation memory (SQLite)
-
-- [x] Query Handling Verified:
-  - ✅ "What regions have high revenue but high customer churn?" → Multi-agent analysis
-  - ✅ "Compare sales performance with customer segments" → Cross-domain synthesis
-  - ✅ "Which product categories appeal to Premium customers?" → Sales + Customer integration
-
-- [x] Advanced Features:
-  - Conversation memory with SQLite checkpointer
-  - Automatic retry logic (3 attempts, exponential backoff)
-  - Permission error detection and user-friendly messages
-  - Thread-safe database access
-
-### Task 3: Deliverables ✓ (30 min)
-
-- [x] GitHub Repository:
-  - All source code committed and pushed
-  - Clean git history
-  - `.gitignore` configured
-  
-- [x] README.md (this file):
-  - ✅ Setup instructions (environment, venv, config)
-  - ✅ Architecture diagram (ASCII/text)
-  - ✅ Sample queries and outputs
-  - ✅ Configuration reference
-  - ✅ Troubleshooting guide
-  
-- [x] Demo Evidence:
-  - Agent startup logs (see terminal output above)
-  - Query examples with expected outputs
-  - Multi-agent synthesis examples
-
----
-
-## Bonus Features Implemented
-
-- [x] Conversation Memory: SQLite-backed LangGraph checkpointer
-- [x] Robust Error Handling: Retry logic with transient vs. non-retryable detection
-- [x] Three Genie Workspaces: Extended from 2 to 3 agents (added Inventory)
-- [x] Permission Error Handling: User-friendly messages for Databricks access issues
-- [x] Comprehensive Documentation: This detailed README
 
 ---
 
@@ -480,21 +317,9 @@ WorkspaceClient(host, token).dashboards.start_conversation_and_wait(
 
 ---
 
-## Evaluation Criteria
-
-| Criterion | Status |
-|-----------|--------|
-| **Functionality (40%)** | ✅ Agents successfully query all three Genie workspaces |
-| **Architecture (30%)** | ✅ Clean design; ReAct pattern; proper separation of concerns |
-| **Intelligence (20%)** | ✅ Coordinator effectively synthesizes cross-domain insights |
-| **Documentation (10%)** | ✅ Comprehensive README with setup, architecture, sample queries |
-
----
-
 ## License
 
 MIT License - see [LICENSE](LICENSE) for details.
 
 Author: Sarah (University of Sharjah)  
-Date: January 2026  
-Status: Complete (all tasks + bonus features implemented)
+Date: January 2026
